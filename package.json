@@ -1,0 +1,30 @@
+{
+  "name": "appointment-management-system",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/mobile",
+    "packages/core"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @appointments/web",
+    "build": "npm run build --workspace @appointments/web",
+    "start": "npm run start --workspace @appointments/web",
+    "mobile": "npm run start --workspace @appointments/mobile",
+    "typecheck": "npm run typecheck --workspaces --if-present && npm run typecheck:edge",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck:edge": "tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution bundler --types node tests/edge-runtime.d.ts supabase/functions/deliver-notifications/index.ts"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.2",
+    "uuid": "11.1.1"
+  },
+  "overrides": {
+    "uuid": "11.1.1",
+    "exceljs": { "uuid": "$uuid" }
+  }
+}

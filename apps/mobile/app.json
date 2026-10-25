@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Meetly",
+    "slug": "meetly-appointments",
+    "version": "1.0.0",
+    "scheme": "meetly",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.meetly.appointments"
+    },
+    "android": {
+      "package": "com.meetly.appointments",
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
+    },
+    "platforms": [
+      "android",
+      "ios"
+    ]
+  }
+}

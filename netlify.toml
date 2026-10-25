@@ -1,0 +1,8 @@
+# Build from the repository root so the shared workspace package is available.
+# In Netlify, select apps/web as the package directory and leave base at root.
+[build]
+  command = "npm run build"
+  publish = "apps/web/.next"
+
+# Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
+# in the Netlify dashboard before deploying the connected application.
