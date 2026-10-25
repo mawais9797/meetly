@@ -8,6 +8,7 @@ dist/
 .env.*
 !.env.example
 .netlify/
+.local-setup/
 *.tsbuildinfo
 test-results/
 qa/
