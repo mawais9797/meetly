@@ -1,14 +1,14 @@
 @echo off
 cd /d "%~dp0"
 echo.
-echo   Meetly - Phone browser preview
+echo   Meetly - Phone browser access
 echo   Connect your phone to the same Wi-Fi as this computer.
 echo   Open http://YOUR-COMPUTER-WIFI-IP:3001 on your phone.
 echo   Your network addresses are listed below. Use the Wi-Fi IPv4 address.
 ipconfig
 echo.
-echo   Keep this window open while using the preview.
-echo   In the app, tap Preview user view to see the customer experience.
+echo   Keep this window open while using the app.
+echo   Sign in with your own account. Your role selects your dashboard.
 echo.
 if not exist "apps\web\.next\BUILD_ID" (
   call npm.cmd run build

@@ -2,19 +2,22 @@
 
 Built from the complete 23-section Appointment Management System PRD v2.0 in this folder.
 
+**Launch direction (27 October 2026): the first release is fully web based.** Users and administrators use the same website in desktop or mobile browsers. No APK, Expo app, or app-store installation is required. Native app work is deferred; see [docs/WEB-FIRST-LAUNCH.md](docs/WEB-FIRST-LAUNCH.md).
+
 ## Open the local website
 
 1. Double-click **Start Appointment App.cmd** in this folder.
 2. Open **http://127.0.0.1:3000** in your browser.
-3. Choose **Preview user view** at the top to try the user request flow. Switch back to the admin view to process it.
+3. With Supabase configured, sign in with your existing account or choose **Create an account**. Regular users open **My appointment**; administrators open **Overview**.
+4. Configure Supabase as described in `docs/SETUP.md`, then sign in. Both roles share the same login screen.
 
-The website starts in a clearly labelled **local preview** when Supabase credentials are absent. It uses sample people and appointments, saves changes in your browser, and does not send emails or push notifications. This preview is for trying the interface; database security and concurrent booking protection require the connected backend.
+The website requires a configured Supabase backend. Missing settings show a setup message. Preview role switches and sample-data fallback have been removed.
 
 ## Project layout
 
 | Folder | Purpose |
 | --- | --- |
-| `apps/web` | Next.js / TypeScript administrator dashboard and account deletion request page |
+| `apps/web` | Responsive Next.js / TypeScript website with signup, user and administrator dashboards, and account deletion |
 | `apps/mobile` | Expo / React Native Android and iOS application with user and administrator screens |
 | `packages/core` | Shared types, PKT conversion, validation, reporting, and lifecycle rules |
 | `supabase/migrations` | PostgreSQL schema, RLS, transactional operations, audit trail, notification queue |
@@ -39,9 +42,9 @@ For a production website build: `npm run build`, then `npm start`.
 
 ## Connect the real system
 
-Follow [docs/SETUP.md](docs/SETUP.md). You will need a Supabase project, a verified sender for email, and an Expo project for native mobile builds and push delivery. Only public Supabase keys belong in client environment files. Service credentials stay in Supabase Edge Function secrets.
+Follow [docs/SETUP.md](docs/SETUP.md). For the web launch, you need a Supabase project and a configured email sender. Expo/native builds are deferred and are not a launch requirement. Only public Supabase keys belong in client environment files. Service credentials stay in Supabase Edge Function secrets.
 
-Do not publish the local preview as a production appointment service. Connecting Supabase removes the preview switch and enforces administrator authentication on the web dashboard.
+The signed-in account’s database role selects its dashboard. Database row-level security and server functions enforce account ownership and administrator permissions. See `docs/SETUP.md` to assign the single administrator.
 
 ## Product decisions implemented
 

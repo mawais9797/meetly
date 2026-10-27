@@ -5,6 +5,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { randomUUID } from 'node:crypto';
+import { normalizePhone } from '../packages/core/src/index';
 let db:PGlite;
 const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const q=(text:string,params:unknown[]=[])=>db.query<any>(text,params);
@@ -14,8 +15,24 @@ async function request(n:number,subject='Project review',key=randomUUID()){await
 async function action(appointment:string,kind:string,reason:string|null=null,start:string|null=null,duration:number|null=null,type:string|null=null,location:string|null=null){return (await q('select * from public.appointment_action($1,$2,$3,$4,$5,$6,$7)',[appointment,kind,reason,start,duration,type,location])).rows[0];}
 const future=new Date();future.setUTCDate(future.getUTCDate()+3);while(future.getUTCDay()!==1)future.setUTCDate(future.getUTCDate()+1);future.setUTCHours(5,0,0,0);
 const start=future.toISOString(),later=(minutes:number)=>new Date(future.getTime()+minutes*60000).toISOString();
-before(async()=>{db=new PGlite({extensions:{btree_gist,pgcrypto}});await db.exec(`create schema auth; create schema extensions; create role anon; create role authenticated; create role service_role bypassrls; create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}',email_confirmed_at timestamptz); create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$; grant usage on schema auth,public to authenticated,anon,service_role; grant execute on function auth.uid() to authenticated;`);for(const name of ['202610180001_foundation.sql','202610180002_delivery.sql','202610180003_push_receipts.sql','202610220004_qa_repairs.sql'])await db.exec(readFileSync(`supabase/migrations/${name}`,'utf8'));for(let n=1;n<=20;n++)await q('insert into auth.users values($1,$2,$3,now())',[id(n),`user${n}@example.com`,JSON.stringify({full_name:`Test User ${n}`,phone:'+923001234567'})]);await q("update profiles set role='Admin' where user_id=$1",[id(1)]);});
+before(async()=>{db=new PGlite({extensions:{btree_gist,pgcrypto}});await db.exec(`create schema auth; create schema extensions; create role anon; create role authenticated; create role service_role bypassrls; create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}',email_confirmed_at timestamptz); create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$; grant usage on schema auth,public to authenticated,anon,service_role; grant execute on function auth.uid() to authenticated;`);for(const name of ['202610180001_foundation.sql','202610180002_delivery.sql','202610180003_push_receipts.sql','202610220004_qa_repairs.sql','202610260005_pakistan_validation.sql'])await db.exec(readFileSync(`supabase/migrations/${name}`,'utf8'));for(let n=1;n<=20;n++)await q('insert into auth.users values($1,$2,$3,now())',[id(n),`user${n}@example.com`,JSON.stringify({full_name:`Test User ${String.fromCharCode(65+n%26)}`,phone:'+923001234567'})]);await q("update profiles set role='Admin' where user_id=$1",[id(1)]);});
 after(async()=>{await db?.close();});
+test('database: Pakistan phone rules match client validation for mobile and landline inputs',async()=>{
+ await root();
+ const inputs=['03001234567','+92 (300) 1234567','00923001234567','923001234567','۰۳۰۰۱۲۳۴۵۶۷','02134567890','0512345678','+922134567890','+92512345678','abc','0300abc1234567','+14155552671','+447911123456','0300123456','030012345678','03991234567','080012345','3001234567'];
+ for(const input of inputs) assert.equal((await q('select normalize_pakistan_phone($1) as phone',[input])).rows[0].phone,normalizePhone(input),input);
+});
+test('database: signup normalizes Pakistan contacts and blocks bad metadata without granting admin',async()=>{
+ await root();
+ await q('insert into auth.users values($1,$2,$3,now())',[id(101),'validation@example.com',JSON.stringify({full_name:'محمد علی',phone:'02134567890',role:'Admin'})]);
+ const p=(await q('select * from profiles where user_id=$1',[id(101)])).rows[0];
+ assert.equal(p.phone,'+922134567890');assert.equal(p.role,'User');
+ for(const phone of ['abc','+14155552671','0300123456']) await assert.rejects(q('insert into auth.users values($1,$2,$3,now())',[randomUUID(),'bad@example.com',JSON.stringify({full_name:'Test Person',phone})]),/Pakistan/);
+ await as(101);await assert.rejects(q('select update_profile($1,$2)',['Valid Name','abc']),/Pakistan/);
+ await assert.rejects(q('select update_profile($1,$2)',['123','03001234567']),/full name/);
+ await q('select update_profile($1,$2)',[' Ayesha Khan ','0512345678']);
+ assert.equal((await q('select phone from profiles where user_id=$1',[id(101)])).rows[0].phone,'+92512345678');
+});
 test('database: public registration ignores role metadata and cannot provision another admin',async()=>{await root();await q('insert into auth.users values($1,$2,$3,now())',[id(21),'attacker@example.com',JSON.stringify({full_name:'Attempted admin',phone:'+923001234567',role:'Admin'})]);assert.equal((await q('select role from profiles where user_id=$1',[id(21)])).rows[0].role,'User');await assert.rejects(q("update profiles set role='Admin' where user_id=$1",[id(21)]),/single_administrator/);});
 test('database: private helper functions and direct writes are forbidden to clients',async()=>{await as(2);await assert.rejects(q("update profiles set role='Admin' where user_id=$1",[id(2)]),/permission denied/);await assert.rejects(q('select refresh_reminders($1)',[randomUUID()]),/permission denied/);await assert.rejects(q('select * from claim_delivery_jobs(10)'),/permission denied/);await assert.rejects(q('insert into appointments(user_id,subject,purpose,request_key) values($1,$2,$3,$4)',[id(2),'a','b',randomUUID()]),/permission denied/);});
 test('database: idempotent submission and concurrent active-request exclusion',async()=>{const key=randomUUID();const a=await request(2,'Concurrent request',key);const retry=(await q('select * from create_appointment($1,$2,$3)',['Concurrent request','Detailed meeting purpose',key])).rows[0];assert.equal(a.id,retry.id);const results=await Promise.allSettled([q('select * from create_appointment($1,$2,$3)',['Second','purpose',randomUUID()]),q('select * from create_appointment($1,$2,$3)',['Third','purpose',randomUUID()])]);assert.ok(results.every(r=>r.status==='rejected'));assert.equal((await q('select * from appointments')).rows.length,1);});

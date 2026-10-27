@@ -1,3 +1,5 @@
+export * from './validation';
+import { isValidDate, isValidTime, dateRangeError } from './validation';
 export const STATUSES = ['Pending', 'Approved', 'Completed', 'Rejected', 'Cancelled', 'No Show'] as const;
 export type Status = typeof STATUSES[number];
 export type MeetingType = 'Physical' | 'Online';
@@ -30,7 +32,7 @@ export function displayDate(value: string | Date, options: Intl.DateTimeFormatOp
 export function displayTime(value: string | Date): string {
   return new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' }).format(new Date(value));
 }
-export function pktToUtc(date: string, time: string): string { return new Date(`${date}T${time}:00+05:00`).toISOString(); }
+export function pktToUtc(date: string, time: string): string { if(!isValidDate(date)||!isValidTime(time)) throw new Error('Enter a valid date and 24-hour time in PKT.'); return new Date(`${date}T${time.slice(0,5)}:00+05:00`).toISOString(); }
 export function addDays(date: string, amount: number): string {
   const d = new Date(`${date}T12:00:00+05:00`); d.setUTCDate(d.getUTCDate() + amount); return pktDate(d);
 }
@@ -41,7 +43,6 @@ export function validateRequest(subject: string, purpose: string) {
   if (!subject.trim() || subject.trim().length > 150) throw new Error('Enter a subject of 1–150 characters.');
   if (!purpose.trim() || purpose.trim().length > 2000) throw new Error('Enter a detailed purpose of 1–2,000 characters.');
 }
-export function validatePhone(phone: string) { return /^\+[1-9]\d{7,14}$/.test(phone); }
 export function isValidMeetingUrl(value: string): boolean {
   if (/[\s\x00-\x1f\x7f\\]/.test(value)) return false;
   const match = /^https?:\/\/((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?::([0-9]{1,5}))?([/?#].*)?$/i.exec(value);
@@ -58,7 +59,7 @@ export function validateSchedule(schedule: Schedule, rules: Availability[], brea
   if (!Number.isInteger(schedule.duration) || schedule.duration < 1 || schedule.duration > 1440) throw new Error('Duration must be 1–1,440 minutes.');
   const end = new Date(start.getTime() + schedule.duration * 60000);
   if (!['Physical','Online'].includes(schedule.meeting_type)) throw new Error('Choose a meeting format.');
-  if (!schedule.location.trim()) throw new Error('Enter the meeting location or URL.');
+  if (!schedule.location.trim() || schedule.location.length > 2000) throw new Error('Enter a meeting location or URL of 1–2,000 characters.');
   if (schedule.meeting_type === 'Online') {
     if (!isValidMeetingUrl(schedule.location)) throw new Error('Enter a valid http or https meeting URL.');
   }
@@ -87,6 +88,7 @@ export function metrics(appointments: Appointment[], now = new Date()) {
 }
 export function reminderDeadlines(start: string, now = new Date()): string[] { return [24,1].map(h => new Date(Date.parse(start)-h*3600000)).filter(d => d > now).map(d => d.toISOString()); }
 export function filterAppointments(rows: Appointment[], filters: { search?: string; status?: string; from?: string; to?: string }) {
+  if(dateRangeError(filters.from,filters.to)) return [];
   const q = (filters.search || '').toLowerCase();
   return rows.filter(a => (!filters.status || filters.status === 'All' || a.status === filters.status) && (!filters.from || pktDate(a.submitted_at) >= filters.from) && (!filters.to || pktDate(a.submitted_at) <= filters.to) && (!q || [a.reference_number,a.subject,a.profile?.full_name,a.profile?.email,a.profile?.phone].some(v => v?.toLowerCase().includes(q)))).sort((a,b) => a.submitted_at.localeCompare(b.submitted_at));
 }

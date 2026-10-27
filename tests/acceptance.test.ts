@@ -28,8 +28,8 @@ before(async()=>{
  create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}',email_confirmed_at timestamptz);
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
  grant usage on schema auth,public to authenticated,anon,service_role; grant execute on function auth.uid() to authenticated;`);
- for(const name of ['202610180001_foundation.sql','202610180002_delivery.sql','202610180003_push_receipts.sql','202610220004_qa_repairs.sql']) await db.exec(readFileSync(`supabase/migrations/${name}`,'utf8'));
- for(let n=1;n<=40;n++) await q('insert into auth.users values($1,$2,$3,now())',[id(n),`qa${n}@example.com`,JSON.stringify({full_name:`QA User ${n}`,phone:'+923001234567'})]);
+ for(const name of ['202610180001_foundation.sql','202610180002_delivery.sql','202610180003_push_receipts.sql','202610220004_qa_repairs.sql','202610260005_pakistan_validation.sql']) await db.exec(readFileSync(`supabase/migrations/${name}`,'utf8'));
+ for(let n=1;n<=40;n++) await q('insert into auth.users values($1,$2,$3,now())',[id(n),`qa${n}@example.com`,JSON.stringify({full_name:`QA User ${String.fromCharCode(65+n%26)}`,phone:'+923001234567'})]);
  await q("update profiles set role='Admin' where user_id=$1",[id(1)]);
 });
 after(async()=>{await db?.close();});

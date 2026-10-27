@@ -48,21 +48,14 @@ Add your final website URL before deploying. The mobile client uses PKCE authori
 
 ## 3. Provision the single administrator privately
 
-In the Supabase Auth dashboard, create a confirmed user with a strong password. Supply metadata:
+1. Open the website, choose **Create account**, and register with the email and password you want to use as administrator.
+2. Verify the email using the confirmation message.
+3. Open `supabase/PROVISION_ADMIN.sql`, replace `REPLACE_WITH_YOUR_VERIFIED_EMAIL` with that account's email, and run the complete script privately in the Supabase SQL Editor.
+4. Sign out of Meetly, then sign in again using the same email and password. The administrator dashboard opens automatically.
 
-```json
-{"full_name":"Administrator","phone":"+923001234567"}
-```
+There are no default administrator credentials. The script rejects an unverified or inactive account and refuses to replace another administrator. The database's unique index prevents a second administrator. Never share your password or add a public role selector.
 
-Alternatively, register a normal user through the mobile app and verify the email. Then, as the database owner in the SQL editor, promote that specific UUID:
-
-```sql
-update public.profiles set role = 'Admin' where user_id = 'YOUR_ADMIN_AUTH_USER_UUID';
-```
-
-The single-admin index rejects a second administrator. Do not add a public promotion endpoint or store an administrator password in source code.
-
-## 4. Connect the admin website
+## 4. Connect the website
 
 Copy `apps/web/.env.example` to `apps/web/.env.local`, then fill:
 
@@ -71,7 +64,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_PUBLIC_KEY
 ```
 
-Restart the web server. The sample data and preview role switch disappear. Sign in with the administrator account. Regular users cannot open the admin dashboard; the public `/delete-account` page lets them authenticate and submit a deletion request, including suspended users.
+Restart the web server. Both roles use the same login page: an administrator opens the management dashboard; a regular user opens My appointment. Missing backend settings show a setup message, never sample dashboards. The public `/delete-account` page accepts deletion requests, including suspended users.
 
 For production, deploy `apps/web` as a Next.js application with workspace package access. Configure the same two public environment variables, HTTPS, Auth redirects, and your domain. Do not expose `.env.local` or service keys.
 

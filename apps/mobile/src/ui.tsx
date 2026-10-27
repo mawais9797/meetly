@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
-import { Status } from '@appointments/core';
+import { Status, asciiDigits, isPhoneInput, normalizePhone, PHONE_HINT } from '@appointments/core';
 import { fonts, gradients, palette, radius, shadow, space, statusColors } from './theme';
 export { palette } from './theme';
 
@@ -10,14 +10,22 @@ export function Button({title,onPress,kind='primary',disabled=false}:{title:stri
   <Text style={[s.buttonText,kind!=='secondary'&&{color:palette.white}]}>{title}</Text>
  </Pressable>;
 }
-export function Field({label,style,onFocus,onBlur,...props}:TextInputProps&{label:string}) {
+export function Field({label,style,onFocus,onBlur,error,...props}:TextInputProps&{label:string;error?:string}) {
  const [focused,setFocused]=useState(false);
  return <View style={s.field}><Text style={s.label}>{label}</Text>
   <TextInput {...props} accessibilityLabel={label} placeholderTextColor={palette.muted}
    selectionColor={palette.primary} onFocus={event=>{setFocused(true);onFocus?.(event);}}
    onBlur={event=>{setFocused(false);onBlur?.(event);}}
-   style={[s.input,props.multiline&&s.multiline,focused&&s.inputFocused,style]}/>
+   style={[s.input,props.multiline&&s.multiline,focused&&s.inputFocused,error&&{borderColor:'#b4233a'},style]}/>
+  {!!error&&<Text accessibilityRole="alert" style={s.error}>{error}</Text>}
  </View>;
+}
+export function PhoneField({value,onChangeText}:{value:string;onChangeText:(value:string)=>void}) {
+ const [error,setError]=useState(''),[touched,setTouched]=useState(false);
+ return <><Field label="Phone number" value={value} keyboardType="phone-pad" autoComplete="tel" maxLength={32}
+  placeholder="+923001234567" error={error}
+  onChangeText={input=>{const next=asciiDigits(input);if(!isPhoneInput(next)){setError('Phone numbers cannot contain letters.');return;}onChangeText(next);setError(touched&&!normalizePhone(next)?PHONE_HINT:'');}}
+  onBlur={()=>{setTouched(true);setError(normalizePhone(value)?'':PHONE_HINT);}}/><Muted>{PHONE_HINT} Local, +92 and 0092 formats are accepted.</Muted></>;
 }
 export function Card({children}:{children:React.ReactNode}){return <View style={s.card}>{children}</View>;}
 export function Title({children}:{children:React.ReactNode}){return <Text accessibilityRole="header" style={s.title}>{children}</Text>;}
